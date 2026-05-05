@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AROVA | Control Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #00F2FF;
+            --bg: #09090A;
+            --card: #141417;
+            --text: #FFFFFF;
+            --accent: #FF00E5;
+            --error: #FF3D71;
+            --success: #00FF95;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 40px 30px; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .logo-h1 { font-size: 32px; font-weight: 900; letter-spacing: 6px; color: #fff; }
+        .badge { background: var(--glass); border: 1px solid var(--border); padding: 6px 14px; border-radius: 30px; font-size: 11px; font-weight: 700; color: var(--primary); }
+
+        /* Navigation */
+        .nav-tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 40px;
+            background: var(--glass);
+            padding: 8px;
+            border-radius: 20px;
+            width: fit-content;
+            border: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            padding: 12px 28px;
+            border-radius: 14px;
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.4);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active { background: var(--primary); color: #000; box-shadow: 0 8px 15px rgba(0, 242, 255, 0.2); }
+
+        /* Sections */
+        .section { display: none; animation: slideUp 0.4s ease forwards; }
+        .section.active { display: block; }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Form Styling */
+        .form-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card);
+            border-radius: 32px;
+            padding: 50px;
+            border: 1px solid var(--border);
+        }
+
+        .form-title { font-size: 24px; font-weight: 800; margin-bottom: 30px; letter-spacing: 1px; }
+        
+        .grid-row { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; }
+        .full { grid-column: span 2; }
+
+        label { display: block; font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; }
+        
+        input, textarea, select {
+            width: 100%;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            color: #fff;
+            font-size: 15px;
+            transition: 0.3s;
+        }
+
+        input:focus { border-color: var(--primary); outline: none; background: rgba(0,242,255,0.02); }
+
+        /* Asset Manager */
+        .asset-manager {
+            display: flex;
+            gap: 20px;
+            background: rgba(255,255,255,0.01);
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 25px;
+        }
+
+        .asset-box { flex: 1; }
+        .asset-preview {
+            width: 100%;
+            height: 100px;
+            background: var(--glass);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .asset-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .change-btn {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .upload-field {
+            position: relative;
+            background: var(--glass);
+            border: 2px dashed var(--border);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .upload-field:hover { border-color: var(--primary); }
+        .upload-field p { font-size: 13px; opacity: 0.5; margin-top: 10px; }
+
+        /* Buttons */
+        .btn-group { display: flex; gap: 20px; margin-top: 30px; }
+        .btn-primary { flex: 2; background: var(--primary); color: #000; border: none; padding: 20px; border-radius: 18px; font-size: 16px; font-weight: 900; cursor: pointer; }
+        .btn-secondary { flex: 1; background: var(--glass); color: #fff; border: 1px solid var(--border); padding: 20px; border-radius: 18px; font-weight: 700; cursor: pointer; }
+
+        /* Catalog Grid */
+        .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 30px; }
+        
+        .product-card {
+            background: var(--card);
+            border-radius: 28px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: 0.3s;
+        }
+
+        .product-card:hover { transform: translateY(-10px); border-color: var(--primary); }
+
+        .card-img { width: 100%; height: 220px; object-fit: cover; }
+        .card-content { padding: 25px; }
+        .card-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+        .card-price { color: var(--primary); font-weight: 800; font-size: 20px; margin-bottom: 20px; display: block; }
+
+        .card-actions { display: flex; gap: 12px; }
+        .act-btn { flex: 1; padding: 12px; border-radius: 14px; font-size: 12px; font-weight: 800; cursor: pointer; border: none; }
+        .edit-act { background: rgba(0, 242, 255, 0.1); color: var(--primary); }
+        .del-act { background: rgba(255, 61, 113, 0.1); color: var(--error); }
+
+        /* Loader */
+        #loader { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; z-index: 1000; justify-content: center; align-items: center; flex-direction: column; gap: 20px; }
+        .spin { width: 50px; height: 50px; border: 3px solid var(--glass); border-top-color: var(--primary); border-radius: 50%; animation: rot 0.8s linear infinite; }
+        @keyframes rot { to { transform: rotate(360deg); } }
+        .loader-text { font-size: 12px; letter-spacing: 2px; color: var(--primary); font-weight: 600; text-transform: uppercase; }
+
+        /* Debug Overlay */
+        #debug { position: fixed; bottom: 20px; left: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; font-size: 10px; color: #aaa; z-index: 2000; display: none; }
+    </style>
+</head>
+<body>
+    <div id="loader">
+        <div class="spin"></div>
+        <div class="loader-text">Syncing Assets...</div>
+    </div>
+
+    <div id="debug"></div>
+
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <h1 class="logo-h1">AROVA</h1>
+                <span class="badge">ADMIN CONTROL</span>
+            </div>
+            <div id="status" style="font-size: 12px; color: var(--success);">● System Online</div>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="tab-btn active" id="tabDashboard" onclick="showSection('dashboard')">DASHBOARD</button>
+            <button class="tab-btn" id="tabUpload" onclick="showSection('upload')">ADD PRODUCT</button>
+            <button class="tab-btn" id="tabCatalog" onclick="showSection('catalog')">LIVE CATALOG / INVENTORY</button>
+            <button class="tab-btn" id="tabOrders" onclick="showSection('orders')">ORDERS MANAGEMENT</button>
+            <button class="tab-btn" id="tabShipping" onclick="showSection('shipping')">SHIPPING CONFIG</button>
+            <button class="tab-btn" id="tabPayouts" onclick="showSection('payouts')">PAYOUTS (PAKISTAN)</button>
+            <button class="tab-btn" id="tabSubscribers" onclick="showSection('subscribers')">NEWSLETTER SUBSCRIBERS</button>
+        </nav>
+
+        <div id="dashboardSection" class="section active">
+            <div style="background: var(--card); border-radius: 32px; padding: 50px; border: 1px solid var(--border);">
+                <h2 class="form-title">Sales Analytics</h2>
+                <div class="grid-row" style="margin-bottom: 30px;">
+                    <div class="field" style="background: rgba(0, 242, 255, 0.05); padding: 30px; border-radius: 20px; border: 1px solid rgba(0, 242, 255, 0.2); text-align: center;">
+                        <h3 style="color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 10px;">Total Revenue</h3>
+                        <p id="dashRevenue" style="font-size: 32px; font-weight: bold; color: var(--primary);">PKR 0</p>
+                    </div>
+                    <div class="field" style="background: rgba(0, 242, 255, 0.05); padding: 30px; border-radius: 20px; border: 1px solid rgba(0, 242, 255, 0.2); text-align: center;">
+                        <h3 style="color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 10px;">Total Orders</h3>
+                        <p id="dashOrders" style="font-size: 32px; font-weight: bold; color: var(--primary);">0</p>
+                    </div>
+                    <div class="field" style="background: rgba(0, 242, 255, 0.05); padding: 30px; border-radius: 20px; border: 1px solid rgba(0, 242, 255, 0.2); text-align: center;">
+                        <h3 style="color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 10px;">Active Customer Sessions</h3>
+                        <p id="dashUsers" style="font-size: 32px; font-weight: bold; color: var(--primary);">0</p>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="color: rgba(255,255,255,0.7); margin: 0;">Sales Analytics Chart</h3>
+                    <select id="dateFilter" onchange="updateDashboard()" style="background: #141417; color: white; border: 1px solid rgba(0,242,255,0.3); padding: 8px 15px; border-radius: 8px; outline: none; cursor: pointer; font-family: 'Outfit', sans-serif;">
+                        <option value="all" style="background: #09090A; color: white;" selected>All Time</option>
+                        <option value="today" style="background: #09090A; color: white;">Today</option>
+                        <option value="yesterday" style="background: #09090A; color: white;">Yesterday</option>
+                        <option value="30days" style="background: #09090A; color: white;">Last 30 Days</option>
+                        <option value="3months" style="background: #09090A; color: white;">Last 3 Months</option>
+                        <option value="6months" style="background: #09090A; color: white;">Last 6 Months</option>
+                    </select>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                    <canvas id="salesChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="uploadSection" class="section">
+            <div class="form-container">
+                <h2 class="form-title" id="mainTitle">Upload New Catalog Item</h2>
+                <form id="uploadForm">
+                    <input type="hidden" id="editId">
+                    <div class="grid-row">
+                        <div class="field full">
+                            <label>Product Name</label>
+                            <input type="text" id="pName" placeholder="e.g. Modern Office Chair" required>
+                        </div>
+                        <div class="field">
+                            <label>Selling Price (PKR)</label>
+                            <input type="number" id="pPrice" placeholder="15000" required>
+                        </div>
+                        <div class="field">
+                            <label>Original Price (for Discounts)</label>
+                            <input type="number" id="pOriginalPrice" placeholder="e.g. 20000 (Optional)">
+                        </div>
+                        <div class="field">
+                            <label>Category</label>
+                            <select id="pCategory">
+                                <option value="Furniture">Furniture</option>
+                                <option value="Appliances">Appliances</option>
+                                <option value="Electronics">Electronics</option>
+                                <option value="Decor">Decor</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Stock Quantity</label>
+                            <input type="number" id="pStock" placeholder="e.g. 10" required>
+                        </div>
+                        <div class="field full">
+                            <label>Description</label>
+                            <textarea id="pDesc" rows="3" placeholder="Enter product details..."></textarea>
+                        </div>
+                    </div>
+
+                    <div id="editAssets" style="display: none; margin-bottom: 30px;">
+                        <label>Current Live Assets</label>
+                        <div class="asset-manager">
+                            <div class="asset-box">
+                                <div class="asset-preview" id="currImg"></div>
+                                <button type="button" class="change-btn" onclick="document.getElementById('editImg').click()">CHANGE IMAGE</button>
+                                <input type="file" id="editImg" style="display: none;" accept="image/*">
+                                <p id="editImgName" style="font-size: 10px; margin-top: 5px; color: var(--success);"></p>
+                            </div>
+                            <div class="asset-box">
+                                <div class="asset-preview" id="currMod" style="font-size: 10px; text-align: center; padding: 10px; opacity: 0.6;"></div>
+                                <button type="button" class="change-btn" onclick="document.getElementById('editMod').click()">CHANGE MODEL</button>
+                                <input type="file" id="editMod" style="display: none;" accept=".glb">
+                                <p id="editModName" style="font-size: 10px; margin-top: 5px; color: var(--success);"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="newAssets">
+                        <div class="grid-row">
+                            <div class="field">
+                                <label>Product Image</label>
+                                <div class="upload-field" onclick="document.getElementById('newImg').click()">
+                                    <span style="font-size: 20px;">🖼️</span>
+                                    <p id="newImgName">Select Image</p>
+                                    <input type="file" id="newImg" style="display: none;" accept="image/*">
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label>3D Model (.glb)</label>
+                                <div class="upload-field" onclick="document.getElementById('newMod').click()">
+                                    <span style="font-size: 20px;">📦</span>
+                                    <p id="newModName">Select GLB File</p>
+                                    <input type="file" id="newMod" style="display: none;" accept=".glb">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn-primary" id="btnSubmit">PUBLISH TO STORE</button>
+                        <button type="button" class="btn-secondary" id="btnCancel" onclick="resetForm()" style="display: none;">CANCEL EDIT</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="catalogSection" class="section">
+            <div class="catalog-grid" id="catGrid"></div>
+        </div>
+
+        <div id="ordersSection" class="section">
+            <div style="background: var(--card); border-radius: 32px; padding: 50px; border: 1px solid var(--border);">
+                <h2 class="form-title">Recent Orders</h2>
+                <div id="ordersGrid" style="display: flex; flex-direction: column; gap: 20px;"></div>
+            </div>
+        </div>
+
+        <div id="shippingSection" class="section">
+            <div style="background: var(--card); border-radius: 32px; padding: 50px; border: 1px solid var(--border);">
+                <h2 class="form-title">Shipping Regions</h2>
+                <div class="field full">
+                    <label>Allowed Countries (comma separated)</label>
+                    <input type="text" id="shipCountries" placeholder="e.g. Pakistan, UAE, US">
+                </div>
+                <div class="field full" style="margin-top: 20px;">
+                    <label>Allowed Cities (comma separated)</label>
+                    <input type="text" id="shipCities" placeholder="e.g. Karachi, Lahore, Islamabad">
+                </div>
+                <button onclick="saveShipping()" class="submit-btn" style="margin-top: 30px; box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);">SAVE SHIPPING SETTINGS</button>
+            </div>
+        </div>
+
+        <div id="payoutsSection" class="section">
+            <div style="background: var(--card); border-radius: 32px; padding: 50px; border: 1px solid var(--border);">
+                <h2 class="form-title">Payout Methods (Pakistan)</h2>
+                <div class="field full">
+                    <label>Easypaisa Number</label>
+                    <input type="text" id="payEasypaisa" placeholder="03XXXXXXXXX">
+                </div>
+                <div class="field full" style="margin-top: 20px;">
+                    <label>JazzCash Number</label>
+                    <input type="text" id="payJazzcash" placeholder="03XXXXXXXXX">
+                </div>
+                <div class="field full" style="margin-top: 20px;">
+                    <label>Bank Account (IBAN)</label>
+                    <input type="text" id="payBank" placeholder="PKXXXXXXXXXXXXXXXXXXXXXX">
+                </div>
+                <button onclick="savePayouts()" class="submit-btn" style="margin-top: 30px; box-shadow: 0 0 20px rgba(0, 242, 255, 0.4); text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);">SAVE PAYOUT SETTINGS</button>
+            </div>
+        </div>
+        <div id="subscribersSection" class="section">
+            <div style="background: var(--card); border-radius: 32px; padding: 50px; border: 1px solid var(--border);">
+                <h2 class="form-title">Newsletter Subscribers</h2>
+                <div id="subscribersList" style="margin-top: 20px;">
+                    <p style="text-align:center; opacity:0.5;">Loading subscribers...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const loader = document.getElementById('loader');
+        const debug = document.getElementById('debug');
+        const uploadForm = document.getElementById('uploadForm');
+        let products = [];
+        let isEdit = false;
+
+        function logDebug(msg) {
+            console.log(msg);
+            debug.innerText += "\n" + msg;
+            debug.style.display = 'block';
+        }
+
+        const API_BASE = window.location.origin + "/api/v1";
+        const API_ADMIN = window.location.origin + "/system-control";
+
+        function showSection(s) {
+            document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
+            if (s === 'dashboard') {
+                document.getElementById('dashboardSection').classList.add('active');
+                document.getElementById('tabDashboard').classList.add('active');
+                fetchAnalytics();
+            } else if (s === 'upload') {
+                document.getElementById('uploadSection').classList.add('active');
+                document.getElementById('tabUpload').classList.add('active');
+            } else if (s === 'catalog') {
+                document.getElementById('catalogSection').classList.add('active');
+                document.getElementById('tabCatalog').classList.add('active');
+                fetchProducts();
+            } else if (s === 'orders') {
+                document.getElementById('ordersSection').classList.add('active');
+                document.getElementById('tabOrders').classList.add('active');
+                fetchOrders();
+            } else if (s === 'shipping') {
+                document.getElementById('shippingSection').classList.add('active');
+                document.getElementById('tabShipping').classList.add('active');
+                fetchShipping();
+            } else if (s === 'payouts') {
+                document.getElementById('payoutsSection').classList.add('active');
+                document.getElementById('tabPayouts').classList.add('active');
+                fetchPayouts();
+            } else if (s === 'subscribers') {
+                document.getElementById('subscribersSection').classList.add('active');
+                document.getElementById('tabSubscribers').classList.add('active');
+                fetchSubscribers();
+            }
+        }
+
+        ['newImg', 'newMod', 'editImg', 'editMod'].forEach(id => {
+            const input = document.getElementById(id);
+            if(input) {
+                input.onchange = (e) => {
+                    document.getElementById(id + 'Name').innerText = e.target.files[0]?.name || (id.startsWith('new') ? 'Select File' : '');
+                };
+            }
+        });
+
+        async function fetchProducts() {
+            loader.style.display = 'flex';
+            try {
+                logDebug(`Fetching products from ${API_BASE}/allproducts`);
+                const res = await fetch(`${API_BASE}/allproducts`);
+                if(!res.ok) throw new Error(`HTTP Error ${res.status}`);
+                const data = await res.json();
+                products = data.products;
+                document.getElementById('catGrid').innerHTML = products.map(p => `
+                    <div class="product-card">
+                        <img src="${p.images[0]?.url}" class="card-img" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+                        <div class="card-content">
+                            <h3 class="card-title">${p.name}</h3>
+                            <span class="card-price">PKR ${p.price}</span>
+                            <div class="card-actions">
+                                <button class="act-btn edit-act" onclick="initEdit('${p._id}')">EDIT</button>
+                                <button class="act-btn del-act" onclick="deleteProd('${p._id}')">DELETE</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { 
+                logDebug("Error: " + e.message);
+                alert("Database Sync Error: " + e.message);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        function initEdit(id) {
+            const p = products.find(x => x._id === id);
+            if (!p) return;
+            isEdit = true;
+            document.getElementById('editId').value = id;
+            document.getElementById('pName').value = p.name;
+            document.getElementById('pPrice').value = p.price;
+            document.getElementById('pOriginalPrice').value = p.originalPrice || 0;
+            document.getElementById('pCategory').value = p.category;
+            document.getElementById('pStock').value = p.stock || 0;
+            document.getElementById('pDesc').value = p.description;
+
+            document.getElementById('mainTitle').innerText = 'Modify Product Asset';
+            document.getElementById('btnSubmit').innerText = 'SAVE CHANGES';
+            document.getElementById('btnCancel').style.display = 'block';
+            document.getElementById('newAssets').style.display = 'none';
+            document.getElementById('editAssets').style.display = 'block';
+
+            document.getElementById('currImg').innerHTML = `<img src="${p.images[0]?.url}">`;
+            document.getElementById('currMod').innerText = `Model Folder: ${p.modelSrc}`;
+
+            showSection('upload');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetForm() {
+            isEdit = false;
+            uploadForm.reset();
+            document.getElementById('mainTitle').innerText = 'Upload New Catalog Item';
+            document.getElementById('btnSubmit').innerText = 'PUBLISH TO STORE';
+            document.getElementById('btnCancel').style.display = 'none';
+            document.getElementById('newAssets').style.display = 'block';
+            document.getElementById('editAssets').style.display = 'none';
+            ['newImgName', 'newModName', 'editImgName', 'editModName'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.innerText = (id.startsWith('new') ? 'Select File' : '');
+            });
+        }
+
+        async function deleteProd(id) {
+            if (!confirm('Permanently delete this product?')) return;
+            loader.style.display = 'flex';
+            try {
+                const res = await fetch(`${API_ADMIN}/product/${id}`, { method: 'DELETE' });
+                if(!res.ok) throw new Error(`Status ${res.status}`);
+                fetchProducts();
+            } catch(e) {
+                alert("Delete Failed: " + e.message);
+                loader.style.display = 'none';
+            }
+        }
+
+        uploadForm.onsubmit = async (e) => {
+            e.preventDefault();
+            loader.style.display = 'flex';
+            
+            try {
+                const id = document.getElementById('editId').value;
+                const url = isEdit ? `${API_ADMIN}/product/${id}` : `${API_ADMIN}/product/new`;
+                const method = isEdit ? 'PUT' : 'POST';
+
+                const fd = new FormData();
+                fd.append('name', document.getElementById('pName').value);
+                fd.append('price', document.getElementById('pPrice').value);
+                fd.append('originalPrice', document.getElementById('pOriginalPrice').value || 0);
+                fd.append('category', document.getElementById('pCategory').value);
+                fd.append('stock', document.getElementById('pStock').value);
+                fd.append('description', document.getElementById('pDesc').value);
+
+                const img = document.getElementById(isEdit ? 'editImg' : 'newImg').files[0];
+                const mod = document.getElementById(isEdit ? 'editMod' : 'newMod').files[0];
+                
+                if (img) fd.append('image', img);
+                if (mod) fd.append('model', mod);
+
+                logDebug(`Submitting ${method} to ${url}`);
+                const res = await fetch(url, { method, body: fd });
+                
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error(`Server returned ${res.status}: ${errorText}`);
+                }
+
+                const data = await res.json();
+                if (data.success) {
+                    alert(isEdit ? 'Product Asset Updated!' : 'Product Published Successfully!');
+                    resetForm();
+                    if (isEdit) showSection('catalog');
+                } else {
+                    alert('Server Error: ' + (data.message || 'Unknown error occurred.'));
+                }
+            } catch (error) {
+                logDebug('Error: ' + error.message);
+                alert('Connection Error: ' + error.message);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        async function fetchOrders() {
+            loader.style.display = 'flex';
+            try {
+                const res = await fetch(`${API_ADMIN}/orders`);
+                if(!res.ok) throw new Error(`HTTP Error ${res.status}`);
+                const data = await res.json();
+                
+                document.getElementById('ordersGrid').innerHTML = data.orders.map(o => `
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 20px; padding: 25px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <h3 style="margin-bottom: 5px;">Order #${o._id.slice(-6).toUpperCase()}</h3>
+                                <span style="font-size: 12px; color: rgba(255,255,255,0.5);">Customer: ${o.user?.name || 'Unknown'} | Total: PKR ${o.totalPrice}</span>
+                            </div>
+                            <span class="badge" style="background: ${o.orderStatus === 'Delivered' ? 'rgba(0,255,149,0.1)' : 'rgba(0,242,255,0.1)'}; color: ${o.orderStatus === 'Delivered' ? 'var(--success)' : 'var(--primary)'}">${o.orderStatus}</span>
+                        </div>
+                        
+                        <div class="grid-row" style="margin-bottom: 10px;">
+                            <div class="field">
+                                <label>Order Status</label>
+                                <select id="status_${o._id}" style="padding: 10px; font-size: 13px;">
+                                    <option value="Processing" ${o.orderStatus === 'Processing' ? 'selected' : ''}>Processing</option>
+                                    <option value="Shipped" ${o.orderStatus === 'Shipped' ? 'selected' : ''}>Shipped</option>
+                                    <option value="Delivered" ${o.orderStatus === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label>Tracking Number</label>
+                                <input type="text" id="track_${o._id}" value="${o.trackingNumber !== 'Not assigned yet' ? o.trackingNumber : ''}" placeholder="Enter Tracking Code..." style="padding: 10px; font-size: 13px;">
+                            </div>
+                        </div>
+                        
+                        <button onclick="updateOrder('${o._id}')" class="change-btn" style="width: auto; padding: 12px 20px;">SAVE ORDER UPDATE</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                alert("Error fetching orders: " + e.message);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        async function updateOrder(id) {
+            loader.style.display = 'flex';
+            try {
+                const status = document.getElementById('status_'+id).value;
+                const trackingNumber = document.getElementById('track_'+id).value || 'Not assigned yet';
+                
+                const res = await fetch(`${API_ADMIN}/order/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status, trackingNumber })
+                });
+                
+                const data = await res.json();
+                if(data.success) {
+                    alert('Order updated successfully!');
+                    fetchOrders();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (e) {
+                alert("Error updating order: " + e.message);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        let globalAnalyticsData = null;
+
+        async function fetchAnalytics() {
+            loader.style.display = 'flex';
+            try {
+                const res = await fetch(`${API_ADMIN}/analytics`);
+                const data = await res.json();
+                if(data.success) {
+                    globalAnalyticsData = data;
+                    updateDashboard();
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        function updateDashboard() {
+            if (!globalAnalyticsData) return;
+            const filter = document.getElementById('dateFilter').value;
+            const data = globalAnalyticsData.salesByDate;
+            
+            let filteredRevenue = 0;
+            let filteredOrders = 0;
+            const filteredDates = {};
+            
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            Object.keys(data).sort().forEach(dateString => {
+                const dateObj = new Date(dateString);
+                dateObj.setHours(0,0,0,0);
+                
+                const diffTime = Math.abs(today - dateObj);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                let include = false;
+                if (filter === 'all') include = true;
+                else if (filter === 'today' && diffDays === 0) include = true;
+                else if (filter === 'yesterday' && diffDays === 1) include = true;
+                else if (filter === '30days' && diffDays <= 30) include = true;
+                else if (filter === '3months' && diffDays <= 90) include = true;
+                else if (filter === '6months' && diffDays <= 180) include = true;
+                
+                if (include) {
+                    filteredDates[dateString] = data[dateString];
+                    filteredRevenue += data[dateString].revenue;
+                    filteredOrders += data[dateString].count;
+                }
+            });
+
+            document.getElementById('dashRevenue').innerText = 'PKR ' + filteredRevenue.toLocaleString();
+            document.getElementById('dashOrders').innerText = filteredOrders;
+            document.getElementById('dashUsers').innerText = globalAnalyticsData.totalUsers || 0;
+            
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            
+            // Create gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(0, 242, 255, 0.4)');
+            gradient.addColorStop(1, 'rgba(0, 242, 255, 0.0)');
+
+            if (window.salesChartInstance) {
+                window.salesChartInstance.destroy();
+            }
+            window.salesChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(filteredDates),
+                    datasets: [{
+                        label: 'Sales (PKR)',
+                        data: Object.values(filteredDates).map(d => d.revenue),
+                        borderColor: '#00F2FF',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#09090A',
+                        pointBorderColor: '#00F2FF',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                            ticks: { color: 'rgba(255,255,255,0.5)' }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: 'rgba(255,255,255,0.5)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(20, 20, 23, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#00F2FF',
+                            borderColor: 'rgba(0, 242, 255, 0.2)',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return 'PKR ' + context.parsed.y.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function fetchShipping() {
+            loader.style.display = 'flex';
+            try {
+                const res = await fetch(`${API_ADMIN}/shipping`);
+                const json = await res.json();
+                if(json.success && json.data) {
+                    document.getElementById('shipCountries').value = (json.data.countries || []).join(', ');
+                    document.getElementById('shipCities').value = (json.data.cities || []).join(', ');
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        async function saveShipping() {
+            const shipCountriesStr = document.getElementById('shipCountries').value;
+            const shipCitiesStr = document.getElementById('shipCities').value;
+            
+            if (!shipCountriesStr.trim() || !shipCitiesStr.trim()) {
+                alert("Please fill out both Countries and Cities fields.");
+                return;
+            }
+
+            loader.style.display = 'flex';
+            try {
+                const countries = shipCountriesStr.split(',').map(s=>s.trim()).filter(Boolean);
+                const cities = shipCitiesStr.split(',').map(s=>s.trim()).filter(Boolean);
+                
+                const res = await fetch(`${API_ADMIN}/shipping`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ countries, cities })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    alert('Shipping regions updated successfully!');
+                }
+            } catch (e) {
+                alert("Error updating shipping: " + e.message);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        async function fetchPayouts() {
+            loader.style.display = 'flex';
+            try {
+                const res = await fetch(`${API_ADMIN}/payouts`);
+                const json = await res.json();
+                if(json.success && json.data) {
+                    document.getElementById('payEasypaisa').value = json.data.easypaisa || '';
+                    document.getElementById('payJazzcash').value = json.data.jazzcash || '';
+                    document.getElementById('payBank').value = json.data.bankAccount || '';
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        async function savePayouts() {
+            const easypaisa = document.getElementById('payEasypaisa').value.trim();
+            const jazzcash = document.getElementById('payJazzcash').value.trim();
+            const bankAccount = document.getElementById('payBank').value.trim();
+            
+            if (!easypaisa && !jazzcash && !bankAccount) {
+                alert("Please fill out at least one payout method.");
+                return;
+            }
+
+            loader.style.display = 'flex';
+            try {
+                
+                const res = await fetch(`${API_ADMIN}/payouts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ easypaisa, jazzcash, bankAccount })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    alert('Payout settings updated successfully!');
+                }
+            } catch (e) {
+                alert("Error updating payouts: " + e.message);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        async function fetchSubscribers() {
+            loader.style.display = 'flex';
+            try {
+                const res = await fetch(`${API_ADMIN}/subscribers`);
+                const json = await res.json();
+                if(json.success && json.subscribers) {
+                    document.getElementById('subscribersList').innerHTML = json.subscribers.map(email => `
+                        <div style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
+                            <span style="color: var(--primary); font-weight: bold;">${email}</span>
+                            <span style="font-size: 10px; opacity: 0.5;">Verified Subscriber</span>
+                        </div>
+                    `).join('') || '<p style="text-align:center; opacity:0.5;">No subscribers yet.</p>';
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        // Initialize dashboard on load
+        window.onload = () => {
+            showSection('dashboard');
+        };
+    </script>
+</body>
+</html>
