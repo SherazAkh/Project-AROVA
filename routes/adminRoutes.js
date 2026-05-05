@@ -7,15 +7,15 @@ const Product = require('../models/productModel');
 const User = require('../models/userModel');
 const Order = require('../models/orderModels');
 
-// Multer Storage Configuration
+const os = require('os');
+
+// Multer Storage Configuration (Use system temp folder for Render compatibility)
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        // If it's a model, save to Model/ folder
-        // If it's an image, save to Model/folder/images
-        cb(null, path.join(__dirname, '../Model'));
+        cb(null, os.tmpdir());
     },
     filename: function (req, file, cb) {
-        cb(null, file.originalname);
+        cb(null, Date.now() + '-' + file.originalname);
     }
 });
 
@@ -23,6 +23,8 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
+
+const cloudinary = require('cloudinary').v2;
 
 router.post('/product/new', upload.fields([
     { name: 'image', maxCount: 1 },
@@ -41,49 +43,37 @@ router.post('/product/new', upload.fields([
         const imageFile = req.files['image'][0];
         const modelFile = req.files['model'][0];
 
-        // Create folder for the product model
-        const folderName = name.replace(/\s+/g, '_');
-        const productFolderPath = path.join(__dirname, '../Model', folderName);
+        // 1. Upload Image to Cloudinary
+        const imageResult = await cloudinary.uploader.upload(imageFile.path, {
+            folder: "arova/products",
+        });
 
-        if (!fs.existsSync(productFolderPath)) {
-            fs.mkdirSync(productFolderPath, { recursive: true });
-        }
+        // 2. Upload Model (.glb) to Cloudinary
+        const modelResult = await cloudinary.uploader.upload(modelFile.path, {
+            folder: "arova/models",
+            resource_type: "raw",
+            public_id: `${name.replace(/\s+/g, '_')}_model`
+        });
 
-        // Move files to the product folder (Using copy + unlink for better Windows compatibility)
-        const newImagePath = path.join(productFolderPath, imageFile.originalname);
-        const newModelPath = path.join(productFolderPath, modelFile.originalname);
-
-        fs.copyFileSync(imageFile.path, newImagePath);
-        fs.unlinkSync(imageFile.path);
-        fs.copyFileSync(modelFile.path, newModelPath);
-        fs.unlinkSync(modelFile.path);
+        // Cleanup local temp files
+        if (fs.existsSync(imageFile.path)) fs.unlinkSync(imageFile.path);
+        if (fs.existsSync(modelFile.path)) fs.unlinkSync(modelFile.path);
 
         // Save to Database
-        // Save to Database (Use relative paths to avoid IP mismatch issues)
-        const imageUrl = `/api/v1/model/${folderName}/${imageFile.originalname}`;
-
-        // Find a valid user to link the product to (required by Schema)
         const user = await User.findOne();
-        if (!user) {
-            return res.status(400).json({
-                success: false,
-                message: "No admin user found in database. Please register a user first."
-            });
-        }
-
         const product = await Product.create({
             name,
             description,
             price,
             category,
-            modelSrc: folderName,
+            modelSrc: modelResult.secure_url,
             stock: stock || 10,
             originalPrice: originalPrice || 0,
             images: [{
-                public_id: folderName,
-                url: imageUrl
+                public_id: imageResult.public_id,
+                url: imageResult.secure_url
             }],
-            user: user._id 
+            user: user ? user._id : null
         });
 
         res.status(201).json({
@@ -92,10 +82,10 @@ router.post('/product/new', upload.fields([
         });
 
     } catch (err) {
-        console.error(err);
+        console.error('Admin Upload Error:', err);
         res.status(500).json({
             success: false,
-            message: err.message
+            message: "Failed to upload to Cloudinary: " + err.message
         });
     }
 });
@@ -118,40 +108,28 @@ router.put('/product/:id', upload.fields([
         let updateData = { ...req.body };
 
         // Handle file updates if provided
-        if (req.files && (req.files['image'] || req.files['model'])) {
-            const folderName = product.modelSrc;
-            const productFolderPath = path.join(__dirname, '../Model', folderName);
-
-            if (!fs.existsSync(productFolderPath)) {
-                fs.mkdirSync(productFolderPath, { recursive: true });
-            }
-
+        if (req.files) {
             if (req.files['image']) {
                 const imageFile = req.files['image'][0];
-                const newImagePath = path.join(productFolderPath, imageFile.originalname);
-                fs.copyFileSync(imageFile.path, newImagePath);
-                fs.unlinkSync(imageFile.path);
-                
+                const imageResult = await cloudinary.uploader.upload(imageFile.path, {
+                    folder: "arova/products",
+                });
                 updateData.images = [{
-                    public_id: folderName,
-                    url: `/api/v1/model/${folderName}/${imageFile.originalname}`
+                    public_id: imageResult.public_id,
+                    url: imageResult.secure_url
                 }];
+                if (fs.existsSync(imageFile.path)) fs.unlinkSync(imageFile.path);
             }
 
             if (req.files['model']) {
                 const modelFile = req.files['model'][0];
-                
-                // CLEANUP: Remove old .glb files to ensure the new one is picked by the server
-                const existingFiles = fs.readdirSync(productFolderPath);
-                existingFiles.forEach(file => {
-                    if (file.toLowerCase().endsWith('.glb')) {
-                        fs.unlinkSync(path.join(productFolderPath, file));
-                    }
+                const modelResult = await cloudinary.uploader.upload(modelFile.path, {
+                    folder: "arova/models",
+                    resource_type: "raw",
+                    public_id: `${(req.body.name || product.name).replace(/\s+/g, '_')}_model`
                 });
-
-                const newModelPath = path.join(productFolderPath, modelFile.originalname);
-                fs.copyFileSync(modelFile.path, newModelPath);
-                fs.unlinkSync(modelFile.path);
+                updateData.modelSrc = modelResult.secure_url;
+                if (fs.existsSync(modelFile.path)) fs.unlinkSync(modelFile.path);
             }
         }
 
@@ -166,10 +144,10 @@ router.put('/product/:id', upload.fields([
             product
         });
     } catch (err) {
-        console.error(err);
+        console.error('Admin Update Error:', err);
         res.status(500).json({
             success: false,
-            message: err.message
+            message: "Failed to update on Cloudinary: " + err.message
         });
     }
 });
